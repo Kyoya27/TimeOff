@@ -60,7 +60,11 @@ module Logic =
             request2.Start.Date <= request1.End.Date && request2.End.Date >= request1.End.Date
 
     let overlapsWithAnyRequest (otherRequests: TimeOffRequest seq) request =
-        false
+        let mutable ok = false
+        for otherRequest in otherRequests do
+            if overlapsWith otherRequest request then
+                ok <- true
+        ok
 
     let createRequest activeUserRequests  request =
         if request |> overlapsWithAnyRequest activeUserRequests then
