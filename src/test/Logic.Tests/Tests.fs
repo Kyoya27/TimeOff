@@ -31,7 +31,7 @@ let overlapTests =
         RequestStatus = OnHold
       }
 
-      Expect.isFalse (Logic.overlapsWith request request) "A request should overlap with istself"
+      Expect.isTrue (Logic.overlapsWith request request) "A request should overlap with istself"
     }
 
     test "Requests on 2 distinct days don't overlap" {
