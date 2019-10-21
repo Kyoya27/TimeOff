@@ -1,0 +1,8 @@
+storage: none
+source https://www.nuget.org/api/v2
+
+framework: netcoreapp2.0
+nuget Newtonsoft.Json
+nuget FSharp.Core
+nuget Expecto
+nuget jose-jwt
