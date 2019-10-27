@@ -153,4 +153,52 @@ let validationTests =
     }
   ]
 
+// [<Tests>]
+// let cancelTests =
+//   testList "Cancellation tests" [
+//     test "Manager Cancels" {
+//       let request = {
+//         UserId = "jdoe"
+//         RequestId = Guid.NewGuid()
+//         Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+//         End = { Date = DateTime(2019, 12, 27); HalfDay = PM } 
+//         RequestStatus = OnHold
+//       }
+
+//       Given [ RequestCancelled request ]
+//       |> ConnectedAs Manager
+//       |> When (CancelRequest ("jdoe", request.RequestId))
+//       |> Then (Ok [RequestCancelled request]) "The request should have been cancelled"
+//     }
+
+//     test "Employee Cancel Past DayOff" {
+//       let request = {
+//         UserId = "Ahmed2"
+//         RequestId = Guid.NewGuid()
+//         Start = { Date = DateTime(2019, 09, 27); HalfDay = AM }
+//         End = { Date = DateTime(2019, 12, 31); HalfDay = AM } 
+//         RequestStatus = OnHold
+//       }
+
+//       Given [ ]
+//       |> ConnectedAs (Employee "Ahmed")
+//       |> When (CancelRequest request)
+//       |> Then (Ok [PendingValidation request]) "The request should stay pending for validation"
+//     }
+
+//     test "Employee Cancel Futur DayOff" {
+//       let request = {
+//         UserId = "Ahmed2"
+//         RequestId = Guid.NewGuid()
+//         Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+//         End = { Date = DateTime(2019, 12, 30); HalfDay = AM } 
+//         RequestStatus = OnHold
+//       }
+
+//       Given [ ]
+//       |> ConnectedAs (Employee "Ahmed")
+//       |> When (CancelRequest request)
+//       |> Then (Ok [RequestCancelled request]) "The request should have been cancelled by the employee"
+//     }
+//   ]
 

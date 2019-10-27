@@ -5,21 +5,25 @@ open System
 // Then our commands
 type Command =
     | RequestTimeOff of TimeOffRequest
+    | CancelRequest of UserId * Guid
     | ValidateRequest of UserId * Guid
     with
     member this.UserId =
         match this with
         | RequestTimeOff request -> request.UserId
+        | CancelRequest (userId, _) -> userId
         | ValidateRequest (userId, _) -> userId
 
 // And our events
 type RequestEvent =
     | RequestCreated of TimeOffRequest
+    | RequestCancelled of TimeOffRequest
     | RequestValidated of TimeOffRequest
     with
     member this.Request =
         match this with
         | RequestCreated request -> request
+        | RequestCancelled request -> request
         | RequestValidated request -> request
 
 // We then define the state of the system,
@@ -29,19 +33,32 @@ module Logic =
     type RequestState =
         | NotCreated
         | PendingValidation of TimeOffRequest
-        | Validated of TimeOffRequest with
+        | Cancelled of TimeOffRequest
+        | Validated of TimeOffRequest 
+        with
         member this.Request =
             match this with
             | NotCreated -> invalidOp "Not created"
             | PendingValidation request
+            | Cancelled request -> request
             | Validated request -> request
         member this.IsActive =
             match this with
             | NotCreated -> false
+            | Cancelled _ -> false
             | PendingValidation _
             | Validated _ -> true
 
     type UserRequestsState = Map<Guid, RequestState>
+
+    let getCurrentDate = DateTime.Today
+        // match unit with
+        // | second ->
+        // | minute ->
+        // | hour ->
+        // | day ->
+        // | month ->
+        // | year ->
 
     let evolveRequest state event =
         match event with
@@ -70,7 +87,7 @@ module Logic =
         if request |> overlapsWithAnyRequest activeUserRequests then
             Error "Overlapping request"
         // This DateTime.Today must go away!
-        elif request.Start.Date <= DateTime.Today then
+        elif request.Start.Date <= getCurrentDate then
             Error "The request starts in the past"
         else
             Ok [RequestCreated request]
@@ -81,6 +98,20 @@ module Logic =
             Ok [RequestValidated request]
         | _ ->
             Error "Request cannot be validated"
+    
+    let cancelRequestByEmployee requestState =
+        if requestState.Start.Date <= getCurrentDate then
+                Ok [PendingValidation requestState]
+            else
+                Ok [Cancelled requestState]
+
+    let cancelRequestByManager requestState = 
+        match requestState with
+        | PendingValidation request ->
+            Ok [RequestCancelled request]
+        | _ ->
+            Error "Request cannot be cancelled"
+
 
     let decide (userRequests: UserRequestsState) (user: User) (command: Command) =
         let relatedUserId = command.UserId
@@ -105,3 +136,11 @@ module Logic =
                 else
                     let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
                     validateRequest requestState
+            | CancelRequest (_, requestId) ->
+                if user <> Manager then
+                    Error "Unauthorized"
+                    //let request = defaultArg (userRequests.TryFind requestId) NotCreated
+                    //cancelRequestByEmployee request
+                else
+                    let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
+                    cancelRequestByManager requestState
