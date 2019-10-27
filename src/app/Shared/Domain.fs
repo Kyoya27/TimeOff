@@ -27,3 +27,8 @@ type TimeOffRequest = {
     End: Boundary
     RequestStatus: Status
 }
+
+type DaysOff = {
+    UserId: UserId
+    Available: int
+}

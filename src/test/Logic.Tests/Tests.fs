@@ -123,4 +123,58 @@ let validationTests =
     }
   ]
 
+[<Tests>]
+let daysOffCalculsTests =
+  testList "Calculs tests" [
+    test "A day is taken" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
 
+      let result = Logic.calculateDaysOff request
+      Expect.isTrue ((1.0).Equals(result)) "Calcul should be right"
+    }
+
+    test "A day is taken on half and half" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 28); HalfDay = PM }
+        End = { Date = DateTime(2019, 10, 29); HalfDay = AM } 
+        RequestStatus = OnHold
+      }
+
+      let result = Logic.calculateDaysOff request
+      Expect.isTrue ((1.0).Equals(result)) "Calcul should be right"
+    }
+
+    test "Two days were took on the week-end" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 25); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 28); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
+
+      let result = Logic.calculateDaysOff request
+      Expect.isTrue ((2.0).Equals(result)) "Calcul should be right"
+    }
+
+    test "An Holiday" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 24); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 26); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
+
+      let result = Logic.calculateDaysOff request
+      Expect.isTrue ((2.0).Equals(result)) "Calcul should be right"
+    }
+  ]

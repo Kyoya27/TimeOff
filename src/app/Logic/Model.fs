@@ -26,6 +26,7 @@ type RequestEvent =
 // and our 2 main functions `decide` and `evolve`
 module Logic =
 
+
     type RequestState =
         | NotCreated
         | PendingValidation of TimeOffRequest
@@ -42,6 +43,8 @@ module Logic =
             | Validated _ -> true
 
     type UserRequestsState = Map<Guid, RequestState>
+
+    let Holidays = ["01/01"; "02/04"; "01/05"; "08/05"; "10/05"; "21/05"; "14/07"; "15/08"; "01/11"; "11/01"; "25/12"]
 
     let evolveRequest state event =
         match event with
@@ -65,6 +68,32 @@ module Logic =
             if overlapsWith otherRequest request then
                 ok <- true
         ok
+    
+    let isHoliday (date: DateTime) =
+        let mutable ok = false
+        let year = date.Year
+        for days in Holidays do
+            let result = days.Split '/'
+            if date.Equals(DateTime(year, result.[1] |> int, result.[0] |> int)) then
+                ok <- true
+        ok
+
+
+    let calculateDaysOff request =
+        let mutable days = float((request.End.Date - request.Start.Date).Days)
+        let mutable date = request.Start.Date
+        while (date.Equals(request.End.Date)).Equals(false) do
+            if date.DayOfWeek.Equals(DayOfWeek.Saturday) || date.DayOfWeek.Equals(DayOfWeek.Sunday) || isHoliday date
+                then days <- days - 1.0
+            date <- date.AddDays(1.0)
+
+        days <- days + 1.0
+        if request.Start.HalfDay.Equals(PM) then days <- days - 0.5
+        if request.End.HalfDay.Equals(AM) then days <- days - 0.5
+        days
+
+    let daysOffChanged request usersDaysOff =
+        usersDaysOff - calculateDaysOff request
 
     let createRequest activeUserRequests  request =
         if request |> overlapsWithAnyRequest activeUserRequests then
