@@ -167,7 +167,7 @@ let validationTests =
 
 //       Given [ RequestCancelled request ]
 //       |> ConnectedAs Manager
-//       |> When (CancelRequest ("jdoe", request.RequestId))
+//       |> When (Logic.decide request CancelRequest)
 //       |> Then (Ok [RequestCancelled request]) "The request should have been cancelled"
 //     }
 
@@ -254,5 +254,24 @@ let daysOffCalculsTests =
 
       let result = Logic.calculateDaysOff request
       Expect.isTrue ((2.0).Equals(result)) "Calcul should be right"
+    }
+  ]
+
+[<Tests>]
+let RefuseRequest =
+  testList "Cancel request" [
+    test "Cancel" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 25); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 28); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
+
+      Given [ RequestCreated request ]
+      |> ConnectedAs Manager
+      |> When (RefuseRequest ("jdoe", request.RequestId))
+      |> Then (Ok [RequestRefused request]) "The request should have been refused"
     }
   ]

@@ -17,7 +17,7 @@ type Boundary = {
     HalfDay: HalfDay
 }
 
-type Status =  OnHold | UpperValidation | Refused | CancelRequest | CancelledByEmployee | NotApprovedCancel | CancelledByManager 
+type Status =  OnHold | Refused | CancelledByEmployee | NotApprovedCancel | CancelledByManager 
 
 [<CLIMutable>]
 type TimeOffRequest = {
