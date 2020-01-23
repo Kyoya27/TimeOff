@@ -13,6 +13,9 @@ open Microsoft.Extensions.DependencyInjection
 open Giraffe
 open Giraffe.HttpStatusCodeHandlers.RequestErrors
 open FSharp.Control.Tasks
+open Newtonsoft.Json.Linq
+open System.Collections.Generic
+
 
 // ---------------------------------
 // Handlers
@@ -22,10 +25,22 @@ module HttpHandlers =
 
     open Microsoft.AspNetCore.Http
 
+    type DaysOff(granted_: float, taken_: float, incoming_: float, past_: float, left_: float) =
+        let mutable granted = granted_
+        let mutable taken = taken_
+        let mutable incoming = incoming_
+        let mutable past = past_
+        let mutable left = left_
+
     [<CLIMutable>]
     type UserAndRequestId = {
         UserId: UserId
         RequestId: Guid
+    }
+
+    [<CLIMutable>]
+    type UserQuery = {
+        UserId: UserId
     }
 
     let requestTimeOff (handleCommand: Command -> Result<RequestEvent list, string>) =
@@ -105,12 +120,88 @@ module HttpHandlers =
                     return! (BAD_REQUEST message) next ctx
             }
 
+    let  getDaysOffGranted (eventStore: IStore<UserId, RequestEvent>) (user: User) =
+        fun (next: HttpFunc) (ctx: HttpContext) ->
+            task {
+                let res = Logic.getDaysOffGranted
+                return! Successful.OK res next ctx
+            }
+
+    let getDaysOffTaken (eventStore: IStore<UserId, RequestEvent>) (user: User) =
+        fun (next: HttpFunc) (ctx: HttpContext) ->
+            task {
+                let userId = ctx.BindQueryString<UserQuery>().UserId
+                let stream = eventStore.GetStream(userId)
+                let requests = Seq.toList<RequestEvent> (stream.ReadAll())
+
+                let res = Logic.getDaysOffTaken requests
+                return! Successful.OK res next ctx
+            }
+
+    let getDaysOffIncoming (eventStore: IStore<UserId, RequestEvent>) (user: User) =
+        fun (next: HttpFunc) (ctx: HttpContext) ->
+            task {
+                let userId = ctx.BindQueryString<UserQuery>().UserId
+                let stream = eventStore.GetStream(userId)
+                let requests = Seq.toList<RequestEvent> (stream.ReadAll())
+                
+                let res = Logic.getDaysOffIncoming requests
+                return! Successful.OK res next ctx
+            }
+
+    let getDaysOffLeft (eventStore: IStore<UserId, RequestEvent>) (user: User) =
+        fun (next: HttpFunc) (ctx: HttpContext) ->
+            task {
+                let userId = ctx.BindQueryString<UserQuery>().UserId
+                let stream = eventStore.GetStream(userId)
+                let requests = Seq.toList<RequestEvent> (stream.ReadAll())
+                
+                let res = Logic.getDaysOffLeft requests
+                return! Successful.OK res next ctx
+            }
+
+    let getDaysOffFromThePast (eventStore: IStore<UserId, RequestEvent>) (user: User) =
+        fun (next: HttpFunc) (ctx: HttpContext) ->
+            task {
+                let userId = ctx.BindQueryString<UserQuery>().UserId
+                let stream = eventStore.GetStream(userId)
+                let requests = Seq.toList<RequestEvent> (stream.ReadAll())
+                
+                let res = Logic.getDaysFromThePast requests
+                return! Successful.OK res next ctx
+            }
+
+    let getDaysOffSummary (eventStore: IStore<UserId, RequestEvent>) (user: User) =
+        fun (next: HttpFunc) (ctx: HttpContext) ->
+            task {
+                let userId = ctx.BindQueryString<UserQuery>().UserId
+                let stream = eventStore.GetStream(userId)
+                let requests = Seq.toList<RequestEvent> (stream.ReadAll())
+                
+                // let res = DaysOff (Logic.getDaysOffGranted, Logic.getDaysOffTaken requests, Logic.getDaysOffIncoming requests, Logic.getDaysFromThePast requests, Logic.getDaysOffLeft requests)
+                let granted  = Logic.getDaysOffGranted
+                let taken = Logic.getDaysOffTaken requests
+                let incoming = Logic.getDaysOffIncoming requests
+                let past = Logic.getDaysFromThePast requests
+                let left = Logic.getDaysOffLeft requests
+
+                let res = JObject [
+                    JProperty("Granted", granted)
+                    JProperty("Taken", taken)
+                    JProperty("Incoming", incoming)
+                    JProperty("Past", past)
+                    JProperty("Left", left)
+                ]
+
+                return! Successful.OK res next ctx
+            }
+
     let getHistoryByUser (eventStore: IStore<UserId, RequestEvent>) (user: User) =
-      fun (next: HttpFunc) (ctx: HttpContext) ->
-        task {
-            let res = Logic.getUserRequests eventStore user
-            return! Successful.OK res next ctx
-        }
+        fun (next: HttpFunc) (ctx: HttpContext) ->
+            task {
+                let res = Logic.getUserRequests eventStore user
+                return! Successful.OK res next ctx
+            }
 
 // ---------------------------------
 // Web app
@@ -147,7 +238,14 @@ let webApp (eventStore: IStore<UserId, RequestEvent>) =
                             POST >=> route "/cancel-request-employee"  >=> HttpHandlers.cancelRequestByEmployee (handleCommand user)
                             POST >=> route "/cancel-request-manager"  >=> HttpHandlers.cancelRequestByManager (handleCommand user)
                             POST >=> route "/refuse-request-cancelation"  >=> HttpHandlers.refuseRequestCancelation (handleCommand user)
+                            
                             GET >=> route "/history" >=> HttpHandlers.getHistoryByUser eventStore user
+                            GET >=> route "/days-off-granted" >=> HttpHandlers.getDaysOffGranted eventStore user
+                            GET >=> route "/days-off-taken" >=> HttpHandlers.getDaysOffTaken eventStore user
+                            GET >=> route "/days-off-incoming" >=> HttpHandlers.getDaysOffIncoming eventStore user
+                            GET >=> route "/days-off-past" >=> HttpHandlers.getDaysOffFromThePast eventStore user
+                            GET >=> route "/days-off-left" >=> HttpHandlers.getDaysOffLeft eventStore user
+                            GET >=> route "/days-off-summary" >=> HttpHandlers.getDaysOffSummary eventStore user
                         ]
                     ))
             ])

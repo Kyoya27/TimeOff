@@ -3,7 +3,9 @@
 open System
 
 // First, we define our domain
+[<CLIMutable>]
 type UserId = string
+
 
 type User =
     | Employee of UserId
@@ -17,7 +19,7 @@ type Boundary = {
     HalfDay: HalfDay
 }
 
-type Status =  OnHold | Refused | CancelledByEmployee | NotApprovedCancel | CancelledByManager 
+type Status =  OnHold | Validated | Refused | CancelledByEmployee | NotApprovedCancel | CancelledByManager 
 
 [<CLIMutable>]
 type TimeOffRequest = {
@@ -25,7 +27,7 @@ type TimeOffRequest = {
     RequestId: Guid
     Start: Boundary
     End: Boundary
-    RequestStatus: Status
+    mutable RequestStatus: Status
 }
 
 type DaysOff = {

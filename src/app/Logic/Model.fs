@@ -54,7 +54,7 @@ module Logic =
             | NotCreated -> invalidOp "Not created"
             | PendingValidation request
             | Validated request -> request
-            | Refused  request -> request
+            | Refused request -> request
             | PendingCancelation request
             | CancelledByManager request -> request
             | CancelledByEmployee request -> request
@@ -117,21 +117,57 @@ module Logic =
                 ok <- true
         ok
 
-    let calculateDaysOff request =
-        let mutable days = float((request.End.Date - request.Start.Date).Days)
-        let mutable date = request.Start.Date
-        while (date.Equals(request.End.Date)).Equals(false) do
-            if date.DayOfWeek.Equals(DayOfWeek.Saturday) || date.DayOfWeek.Equals(DayOfWeek.Sunday) || isHoliday date
-                then days <- days - 1.0
+    let calculateDaysOff (request: RequestEvent) =
+        let mutable days = float((request.Request.End.Date - request.Request.Start.Date).Days) + 1.0
+        let mutable date = request.Request.Start.Date
+        while (date <= request.Request.End.Date).Equals(true) do
+            if date.DayOfWeek.Equals(DayOfWeek.Saturday) || date.DayOfWeek.Equals(DayOfWeek.Sunday) || isHoliday date then
+                days <- days - 1.0
             date <- date.AddDays(1.0)
 
-        days <- days + 1.0
-        if request.Start.HalfDay.Equals(PM) then days <- days - 0.5
-        if request.End.HalfDay.Equals(AM) then days <- days - 0.5
+        //days <- days + 1.0
+        if request.Request.Start.HalfDay.Equals(PM) then days <- days - 0.5
+        if request.Request.End.HalfDay.Equals(AM) then days <- days - 0.5
         days
 
     let daysOffChanged request usersDaysOff =
         usersDaysOff - calculateDaysOff request
+
+    let getDaysOffGranted = 20.0
+
+    let getDaysOffTaken (requests: RequestEvent list) =
+        let today = getCurrentDate
+        let mutable count = 0.0
+        let firstDay = DateTime(today.Year, 1, 1)
+
+        for req in requests do
+            if req.Request.RequestStatus = Status.Validated && req.Request.Start.Date >= firstDay && req.Request.End.Date <= today then
+                count <- count + calculateDaysOff req
+        count
+
+    let getDaysOffIncoming (requests: RequestEvent list) =
+        let today = getCurrentDate
+        let mutable count = 0.0
+        let lastDay = DateTime(today.Year, 12, 31)
+
+        for req in requests do
+            if req.Request.RequestStatus = Status.Validated && req.Request.Start.Date > today && req.Request.End.Date <= lastDay then
+                count <- count + calculateDaysOff req
+        count
+    
+    let getDaysFromThePast (requests: RequestEvent list) =
+        let today = getCurrentDate
+        let  mutable count = 0.0
+        let firstDay = DateTime(today.Year - 1, 1, 1)
+        let lastDay = DateTime(today.Year - 1, 12, 31)
+
+        for req in requests do
+            if req.Request.RequestStatus = Status.Validated && req.Request.Start.Date >= firstDay && req.Request.End.Date <= lastDay then
+                count <- count + calculateDaysOff req
+        getDaysOffGranted - count
+    
+    let getDaysOffLeft (requests: RequestEvent list) =
+        getDaysOffGranted + (getDaysFromThePast requests) - (getDaysOffTaken requests + getDaysOffIncoming requests)
 
     let createRequest activeUserRequests request =
         if request |> overlapsWithAnyRequest activeUserRequests then
@@ -151,6 +187,7 @@ module Logic =
     let validateRequest requestState =
         match requestState with
         | PendingValidation request ->
+            request.RequestStatus <- Status.Validated
             Ok [RequestValidated request]
         | _ ->
             Error "Request cannot be validated"
@@ -168,14 +205,8 @@ module Logic =
 
     let cancelRequestByEmployee (requestState: RequestState) =
         if getCurrentDate >= requestState.Request.Start.Date then
-            Console.WriteLine("if")
-            Console.WriteLine(DateTime.Today)
-            Console.WriteLine(requestState.Request.Start.Date)
             Ok [RequestPendingCancelation requestState.Request]
         else
-            Console.WriteLine("else")
-            Console.WriteLine(DateTime.Today)
-            Console.WriteLine(requestState.Request.Start.Date)
             Ok [RequestCancelledByEmployee requestState.Request]
 
     let refuseRequestCancelation requestState =
