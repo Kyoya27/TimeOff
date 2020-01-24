@@ -79,9 +79,9 @@ let overlapTests =
         RequestStatus = OnHold
       }
 
-       let uwu = [ request1; request2 ]
+       let reqs = [ request1; request2 ]
 
-      Expect.isTrue(Logic.overlapsWithAnyRequest uwu request3) "Requests overlap"
+      Expect.isTrue(Logic.overlapsWithAnyRequest reqs request3) "Requests overlap"
     }
   ]
 
@@ -92,8 +92,8 @@ let creationTests =
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } 
+        Start = { Date = DateTime(2020, 12, 27); HalfDay = AM }
+        End = { Date = DateTime(2010, 12, 27); HalfDay = PM } 
         RequestStatus = OnHold
         }
 
@@ -107,7 +107,7 @@ let creationTests =
       let request = {
         UserId = "Ahmed"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+        Start = { Date = DateTime(2020, 12, 27); HalfDay = AM }
         End = { Date = DateTime(2020, 01, 31); HalfDay = PM }
         RequestStatus = OnHold
       }
@@ -153,110 +153,6 @@ let validationTests =
     }
   ]
 
-// [<Tests>]
-// let cancelTests =
-//   testList "Cancellation tests" [
-//     test "Manager Cancels" {
-//       let request = {
-//         UserId = "jdoe"
-//         RequestId = Guid.NewGuid()
-//         Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-//         End = { Date = DateTime(2019, 12, 27); HalfDay = PM } 
-//         RequestStatus = OnHold
-//       }
-
-//       Given [ RequestCancelled request ]
-//       |> ConnectedAs Manager
-//       |> When (Logic.decide request CancelRequest)
-//       |> Then (Ok [RequestCancelled request]) "The request should have been cancelled"
-//     }
-
-//     test "Employee Cancel Past DayOff" {
-//       let request = {
-//         UserId = "Ahmed2"
-//         RequestId = Guid.NewGuid()
-//         Start = { Date = DateTime(2019, 09, 27); HalfDay = AM }
-//         End = { Date = DateTime(2019, 12, 31); HalfDay = AM } 
-//         RequestStatus = OnHold
-//       }
-
-//       Given [ ]
-//       |> ConnectedAs (Employee "Ahmed")
-//       |> When (CancelRequest request)
-//       |> Then (Ok [PendingValidation request]) "The request should stay pending for validation"
-//     }
-
-//     test "Employee Cancel Futur DayOff" {
-//       let request = {
-//         UserId = "Ahmed2"
-//         RequestId = Guid.NewGuid()
-//         Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-//         End = { Date = DateTime(2019, 12, 30); HalfDay = AM } 
-//         RequestStatus = OnHold
-//       }
-
-//       Given [ ]
-//       |> ConnectedAs (Employee "Ahmed")
-//       |> When (CancelRequest request)
-//       |> Then (Ok [RequestCancelled request]) "The request should have been cancelled by the employee"
-//     }
-//   ]
-[<Tests>]
-let daysOffCalculsTests =
-  testList "Calculs tests" [
-    test "A day is taken" {
-      let request = {
-        UserId = "jdoe"
-        RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } 
-        RequestStatus = OnHold
-      }
-
-      let result = Logic.calculateDaysOff request
-      Expect.isTrue ((1.0).Equals(result)) "Calcul should be right"
-    }
-
-    test "A day is taken on half and half" {
-      let request = {
-        UserId = "jdoe"
-        RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 28); HalfDay = PM }
-        End = { Date = DateTime(2019, 10, 29); HalfDay = AM } 
-        RequestStatus = OnHold
-      }
-
-      let result = Logic.calculateDaysOff request
-      Expect.isTrue ((1.0).Equals(result)) "Calcul should be right"
-    }
-
-    test "Two days were took on the week-end" {
-      let request = {
-        UserId = "jdoe"
-        RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 25); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 28); HalfDay = PM } 
-        RequestStatus = OnHold
-      }
-
-      let result = Logic.calculateDaysOff request
-      Expect.isTrue ((2.0).Equals(result)) "Calcul should be right"
-    }
-
-    test "An Holiday" {
-      let request = {
-        UserId = "jdoe"
-        RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 24); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 26); HalfDay = PM } 
-        RequestStatus = OnHold
-      }
-
-      let result = Logic.calculateDaysOff request
-      Expect.isTrue ((2.0).Equals(result)) "Calcul should be right"
-    }
-  ]
-
 [<Tests>]
 let RefuseRequest =
   testList "Cancel request" [
@@ -273,5 +169,335 @@ let RefuseRequest =
       |> ConnectedAs Manager
       |> When (RefuseRequest ("jdoe", request.RequestId))
       |> Then (Ok [RequestRefused request]) "The request should have been refused"
+    }
+  ]
+
+[<Tests>]
+let cancelEmplTests =
+  testList "Cancel requests by employee" [
+    test "A request is canceled from created by employee" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 02, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 02, 27); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
+
+      Given [ RequestCreated request ]
+      |> ConnectedAs (Employee "employee1")
+      |> When (CancelRequest ("employee1", request.RequestId))
+      |> Then (Ok [RequestCancelledByEmployee request]) "The request should have been canceled"
+    }
+
+    test "A request is canceled from validated by employee" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 02, 27); HalfDay = AM }
+        End = { Date = DateTime(2020, 02, 27); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      Given [ RequestValidated request ]
+      |> ConnectedAs (Employee "employee1")
+      |> When (CancelRequest ("employee1", request.RequestId))
+      |> Then (Ok [RequestCancelledByEmployee request]) "The request should have been canceled"
+    }
+
+    test "A request is pending cancelation from validated by employee" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 22); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 25); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      Given [ RequestValidated request ]
+      |> ConnectedAs (Employee "employee1")
+      |> When (CancelRequest ("employee1", request.RequestId))
+      |> Then (Ok [RequestPendingCancelation request]) "The request should have been in pending cancelation"
+    }
+  ]
+
+[<Tests>]
+let cancelTManagerests =
+  testList "Cancel requests by manager" [
+    test "A request is canceled from created by manager" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 02, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 02, 27); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
+
+      Given [ RequestCreated request ]
+      |> ConnectedAs Manager
+      |> When (CancelRequest ("employee1", request.RequestId))
+      |> Then (Ok [RequestCancelledByManager request]) "The request should have been canceled"
+    }
+
+    test "A request is canceled from validated by manager" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 02, 27); HalfDay = AM }
+        End = { Date = DateTime(2020, 02, 27); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      Given [ RequestValidated request ]
+      |> ConnectedAs Manager
+      |> When (CancelRequest ("employee1", request.RequestId))
+      |> Then (Ok [RequestCancelledByManager request]) "The request should have been canceled"
+    }
+
+    test "A request is canceled from pending cancelation by manager" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 22); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 25); HalfDay = PM } 
+        RequestStatus = PendingCancelation
+      }
+
+      Given [ RequestPendingCancelation request ]
+      |> ConnectedAs Manager
+      |> When (CancelRequest ("employee1", request.RequestId))
+      |> Then (Ok [ RequestCancelledByManager request]) "The request should have been canceled"
+    }
+  ]
+
+[<Tests>]
+let refuseCancelation =
+  testList "Cancelation refused by manager" [
+    test "A request is refused from pending cancelation by manager" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 02, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 02, 27); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
+
+      Given [ RequestPendingCancelation request ]
+      |> ConnectedAs Manager
+      |> When (RefuseRequestCancelation ("employee1", request.RequestId))
+      |> Then (Ok [RequestValidated request]) "The request should have been validated"
+    }
+  ]
+
+[<Tests>]
+let daysOffCalculsTests =
+  testList "Calculs tests" [
+    test "A day is taken" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
+      let (reqEvent:RequestEvent) = RequestValidated request
+      let result = Logic.calculateDaysOff reqEvent
+      Expect.isTrue ((1.0).Equals(result)) "Calcul should be right"
+    }
+
+    test "A day is taken on half and half" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 28); HalfDay = PM }
+        End = { Date = DateTime(2019, 10, 29); HalfDay = AM } 
+        RequestStatus = OnHold
+      }
+      let (reqEvent:RequestEvent) = RequestValidated request
+      let result = Logic.calculateDaysOff reqEvent
+      Expect.isTrue ((1.0).Equals(result)) "Calcul should be right"
+    }
+
+    test "Two days were took on the week-end" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 25); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 28); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
+
+      let (reqEvent:RequestEvent) = RequestValidated request
+      let result = Logic.calculateDaysOff reqEvent
+      Expect.isTrue ((2.0).Equals(result)) "Calcul should be right"
+    }
+
+    test "An Holiday" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 24); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 26); HalfDay = PM } 
+        RequestStatus = OnHold
+      }
+
+      let (reqEvent:RequestEvent) = RequestValidated request
+      let result = Logic.calculateDaysOff reqEvent
+      Expect.isTrue ((2.0).Equals(result)) "Calcul should be right"
+    }
+  ]
+
+[<Tests>]
+let holidaysTaken =
+  testList "Taken tests" [
+    test "Check days off taken, one request" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 03); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 06); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+      let (reqEvent:RequestEvent) = RequestValidated request
+      let (result: float) = Logic.getDaysOffTaken [reqEvent] (DateTime(2020, 01, 20))
+      Expect.isTrue ((2.0).Equals(result)) "Result should be 2"
+    }
+
+    test "Check days off taken, two requests" {
+      let request1 = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 03); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 06); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      let request2 = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 08); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 09); HalfDay = AM } 
+        RequestStatus = Validated
+      }
+      let (reqEvent1:RequestEvent) = RequestValidated request1
+      let (reqEvent2:RequestEvent) = RequestValidated request2
+      let (result: float) = Logic.getDaysOffTaken [reqEvent1; reqEvent2] (DateTime(2020, 01, 20))
+      Expect.isTrue ((3.5).Equals(result)) "Result should be 3.5"
+    }
+  ]
+
+[<Tests>]
+let holidaysIncoming =
+  testList "Incoming tests" [
+    test "Check days off incoming, one request" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 13); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 20); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+      let (reqEvent:RequestEvent) = RequestValidated request
+      let (result: float) = Logic.getDaysOffIncoming [reqEvent] (DateTime(2020, 01, 10))
+      Expect.isTrue ((6.0).Equals(result)) "Result should be 6"
+    }
+
+    test "Check days off incoming, two requests" {
+      let request1 = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 13); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 20); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      let request2 = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 21); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 22); HalfDay = AM } 
+        RequestStatus = Validated
+      }
+      let (reqEvent1:RequestEvent) = RequestValidated request1
+      let (reqEvent2:RequestEvent) = RequestValidated request2
+      let (result: float) = Logic.getDaysOffIncoming [reqEvent1; reqEvent2] (DateTime(2020, 01, 10))
+      Expect.isTrue ((7.5).Equals(result)) "Result should be 7.5"
+    }
+  ]
+
+[<Tests>]
+let holidaysFromLastYear =
+  testList "Past days tests" [
+    test "Check days off days from last year, one request" {
+      let request = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 13); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 20); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      let (reqEvent:RequestEvent) = RequestValidated request
+      let (result: float) = Logic.getDaysLeftFromThePast [reqEvent] (DateTime(2020, 01, 10))
+      Expect.isTrue ((14.0).Equals(result)) "Result should be 20 - 6 = 14"
+    }
+
+    test "Check days off from last year, two requests" {
+      let request1 = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 13); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 20); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      let request2 = {
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 24); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 26); HalfDay = AM } // Noël
+        RequestStatus = Validated
+      }
+
+      let (reqEvent1:RequestEvent) = RequestValidated request1
+      let (reqEvent2:RequestEvent) = RequestValidated request2
+      let (result: float) = Logic.getDaysLeftFromThePast [reqEvent1; reqEvent2] (DateTime(2020, 01, 10))
+      Expect.isTrue((12.5).Equals(result)) "Result should be 20 - 7.5 = 12.5"
+    }
+  ]
+
+[<Tests>]
+let holidaysLeft =
+  testList "Holidays left" [
+    test "Check days off days from last year, one request" {
+      let requestTaken = { // 5 used
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 03); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 09); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      let requestIncoming = { // 5 used
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2020, 01, 13); HalfDay = AM }
+        End = { Date = DateTime(2020, 01, 17); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      let requestPast = { // 2 given
+        UserId = "employee1"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 02); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 26); HalfDay = PM } 
+        RequestStatus = Validated
+      }
+
+      let (reqTaken: RequestEvent) = RequestValidated requestTaken
+      let (reqIncoming: RequestEvent) = RequestValidated requestIncoming
+      let (reqPast: RequestEvent) = RequestValidated requestPast
+      let (result: float) = Logic.getDaysOffLeft [reqTaken; reqIncoming; reqPast] (DateTime(2020, 01, 10))
+      Expect.isTrue ((12.0).Equals(result)) "Result should be 20 - 5 - 5 + 2 = 12"
     }
   ]

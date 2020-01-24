@@ -126,17 +126,23 @@ module Logic =
             date <- date.AddDays(1.0)
 
         //days <- days + 1.0
-        if request.Request.Start.HalfDay.Equals(PM) then days <- days - 0.5
-        if request.Request.End.HalfDay.Equals(AM) then days <- days - 0.5
+        if not (request.Request.Start.Date.DayOfWeek.Equals(DayOfWeek.Saturday))
+            && not (request.Request.Start.Date.DayOfWeek.Equals(DayOfWeek.Sunday))
+            && request.Request.Start.HalfDay.Equals(PM)
+            then days <- days - 0.5
+        
+        if not (request.Request.End.Date.DayOfWeek.Equals(DayOfWeek.Saturday))
+            && not (request.Request.End.Date.DayOfWeek.Equals(DayOfWeek.Sunday))
+            && request.Request.End.HalfDay.Equals(AM)
+            then days <- days - 0.5
         days
 
-    let daysOffChanged request usersDaysOff =
-        usersDaysOff - calculateDaysOff request
+    // let daysOffChanged request usersDaysOff =
+    //     usersDaysOff - calculateDaysOff request
 
     let getDaysOffGranted = 20.0
 
-    let getDaysOffTaken (requests: RequestEvent list) =
-        let today = getCurrentDate
+    let getDaysOffTaken (requests: RequestEvent list) (today: DateTime) =
         let mutable count = 0.0
         let firstDay = DateTime(today.Year, 1, 1)
 
@@ -145,8 +151,7 @@ module Logic =
                 count <- count + calculateDaysOff req
         count
 
-    let getDaysOffIncoming (requests: RequestEvent list) =
-        let today = getCurrentDate
+    let getDaysOffIncoming (requests: RequestEvent list) (today: DateTime) =
         let mutable count = 0.0
         let lastDay = DateTime(today.Year, 12, 31)
 
@@ -155,8 +160,7 @@ module Logic =
                 count <- count + calculateDaysOff req
         count
     
-    let getDaysFromThePast (requests: RequestEvent list) =
-        let today = getCurrentDate
+    let getDaysLeftFromThePast (requests: RequestEvent list) (today: DateTime) =
         let  mutable count = 0.0
         let firstDay = DateTime(today.Year - 1, 1, 1)
         let lastDay = DateTime(today.Year - 1, 12, 31)
@@ -164,10 +168,11 @@ module Logic =
         for req in requests do
             if req.Request.RequestStatus = Status.Validated && req.Request.Start.Date >= firstDay && req.Request.End.Date <= lastDay then
                 count <- count + calculateDaysOff req
+
         getDaysOffGranted - count
     
-    let getDaysOffLeft (requests: RequestEvent list) =
-        getDaysOffGranted + (getDaysFromThePast requests) - (getDaysOffTaken requests + getDaysOffIncoming requests)
+    let getDaysOffLeft (requests: RequestEvent list) (today: DateTime) =
+        getDaysOffGranted + (getDaysLeftFromThePast requests today) - (getDaysOffTaken requests today + getDaysOffIncoming requests today)
 
     let createRequest activeUserRequests request =
         if request |> overlapsWithAnyRequest activeUserRequests then

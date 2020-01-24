@@ -6,7 +6,6 @@ open System
 [<CLIMutable>]
 type UserId = string
 
-
 type User =
     | Employee of UserId
     | Manager
@@ -19,7 +18,7 @@ type Boundary = {
     HalfDay: HalfDay
 }
 
-type Status =  OnHold | Validated | Refused | CancelledByEmployee | NotApprovedCancel | CancelledByManager 
+type Status =  OnHold | Validated | Refused | CancelledByEmployee | PendingCancelation | NotApprovedCancel | CancelledByManager 
 
 [<CLIMutable>]
 type TimeOffRequest = {

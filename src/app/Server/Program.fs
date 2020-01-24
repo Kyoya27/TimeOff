@@ -134,7 +134,7 @@ module HttpHandlers =
                 let stream = eventStore.GetStream(userId)
                 let requests = Seq.toList<RequestEvent> (stream.ReadAll())
 
-                let res = Logic.getDaysOffTaken requests
+                let res = Logic.getDaysOffTaken requests DateTime.Today
                 return! Successful.OK res next ctx
             }
 
@@ -145,7 +145,7 @@ module HttpHandlers =
                 let stream = eventStore.GetStream(userId)
                 let requests = Seq.toList<RequestEvent> (stream.ReadAll())
                 
-                let res = Logic.getDaysOffIncoming requests
+                let res = Logic.getDaysOffIncoming requests DateTime.Today
                 return! Successful.OK res next ctx
             }
 
@@ -156,7 +156,7 @@ module HttpHandlers =
                 let stream = eventStore.GetStream(userId)
                 let requests = Seq.toList<RequestEvent> (stream.ReadAll())
                 
-                let res = Logic.getDaysOffLeft requests
+                let res = Logic.getDaysOffLeft requests DateTime.Today
                 return! Successful.OK res next ctx
             }
 
@@ -167,7 +167,7 @@ module HttpHandlers =
                 let stream = eventStore.GetStream(userId)
                 let requests = Seq.toList<RequestEvent> (stream.ReadAll())
                 
-                let res = Logic.getDaysFromThePast requests
+                let res = Logic.getDaysLeftFromThePast requests DateTime.Today
                 return! Successful.OK res next ctx
             }
 
@@ -180,10 +180,10 @@ module HttpHandlers =
                 
                 // let res = DaysOff (Logic.getDaysOffGranted, Logic.getDaysOffTaken requests, Logic.getDaysOffIncoming requests, Logic.getDaysFromThePast requests, Logic.getDaysOffLeft requests)
                 let granted  = Logic.getDaysOffGranted
-                let taken = Logic.getDaysOffTaken requests
-                let incoming = Logic.getDaysOffIncoming requests
-                let past = Logic.getDaysFromThePast requests
-                let left = Logic.getDaysOffLeft requests
+                let taken = Logic.getDaysOffTaken requests DateTime.Today
+                let incoming = Logic.getDaysOffIncoming requests DateTime.Today
+                let past = Logic.getDaysLeftFromThePast requests DateTime.Today
+                let left = Logic.getDaysOffLeft requests DateTime.Today
 
                 let res = JObject [
                     JProperty("Granted", granted)
